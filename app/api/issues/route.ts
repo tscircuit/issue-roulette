@@ -58,7 +58,7 @@ export async function GET() {
 
     const weightedIssues = allIssues.map((issue) => {
       const createdAt = new Date(issue.created_at)
-      let weight
+      let weight: number
       if (createdAt >= oneWeekAgo) {
         weight = 0.7
       } else if (createdAt >= oneMonthAgo) {
