@@ -14,7 +14,8 @@
       "package.json",
       ".next",
       "node_modules",
-      "public"
+      "public",
+      "out"
     ]
   },
   "javascript": {
