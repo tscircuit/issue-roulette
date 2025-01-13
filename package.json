@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "biome lint .",
     "format": "biome format .",
-    "check": "biome check --apply ."
+    "check": "biome check"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
