@@ -76,28 +76,36 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
-  return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color =
-      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-      itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
-  })
-  .join("\n")}
-}
-`,
-          )
-          .join("\n"),
-      }}
-    />
-  )
+  const styleContent = React.useMemo(() => {
+    return Object.entries(THEMES)
+      .map(([theme, prefix]) => {
+        const themeRules = colorConfig
+          .map(([key, itemConfig]) => {
+            const color =
+              itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
+              itemConfig.color
+            return color ? `  --color-${key}: ${color};` : null
+          })
+          .filter(Boolean)
+          .join("\n")
+
+        return `${prefix} [data-chart=${id}] {\n${themeRules}\n}`
+      })
+      .join("\n")
+  }, [id, colorConfig])
+
+  React.useInsertionEffect(() => {
+    const styleElement = document.createElement("style")
+    styleElement.setAttribute("data-chart-style", id)
+    styleElement.textContent = styleContent
+    document.head.appendChild(styleElement)
+
+    return () => {
+      styleElement.remove()
+    }
+  }, [id, styleContent])
+
+  return null
 }
 
 const ChartTooltip = RechartsPrimitive.Tooltip
