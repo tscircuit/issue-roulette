@@ -1,70 +1,75 @@
-"use client";
+"use client"
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Dices, ExternalLink, User, Calendar, AlertCircle } from 'lucide-react';
-import { format } from 'date-fns';
-import ReactMarkdown from 'react-markdown';
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { format } from "date-fns"
+import { AlertCircle, Calendar, Dices, ExternalLink, User } from "lucide-react"
+import { useState } from "react"
+import ReactMarkdown from "react-markdown"
 
 type Issue = {
-  id: number;
-  title: string;
-  body: string;
-  html_url: string;
-  created_at: string;
+  id: number
+  title: string
+  body: string
+  html_url: string
+  created_at: string
   user: {
-    login: string;
-    avatar_url: string;
-  };
+    login: string
+    avatar_url: string
+  }
   repository: {
-    name: string;
-    full_name: string;
-  };
-};
+    name: string
+    full_name: string
+  }
+}
 
 type ErrorResponse = {
-  error: string;
-  message: string;
-};
+  error: string
+  message: string
+}
 
 export default function IssueRoulette() {
-  const [currentIssue, setCurrentIssue] = useState<Issue | null>(null);
-  const [usedIssues, setUsedIssues] = useState<Set<number>>(new Set());
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [currentIssue, setCurrentIssue] = useState<Issue | null>(null)
+  const [usedIssues, setUsedIssues] = useState<Set<number>>(new Set())
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const spinRoulette = async () => {
-    setIsLoading(true);
-    setError(null);
-    
+    setIsLoading(true)
+    setError(null)
+
     try {
-      const response = await fetch('/api/issues');
-      const data = await response.json();
+      const response = await fetch("/api/issues")
+      const data = await response.json()
 
       if (!response.ok) {
-        const errorData = data as ErrorResponse;
-        throw new Error(errorData.message || 'Failed to fetch issues');
-      }
-      
-      const issues = data as Issue[];
-      const availableIssues = issues.filter(issue => !usedIssues.has(issue.id));
-      
-      if (availableIssues.length === 0) {
-        setUsedIssues(new Set());
-        setError('All issues have been shown. Starting over!');
-        return;
+        const errorData = data as ErrorResponse
+        throw new Error(errorData.message || "Failed to fetch issues")
       }
 
-      const selectedIssue = availableIssues[Math.floor(Math.random() * availableIssues.length)];
-      setCurrentIssue(selectedIssue);
-      setUsedIssues(new Set([...usedIssues, selectedIssue.id]));
+      const issues = data as Issue[]
+      const availableIssues = issues.filter(
+        (issue) => !usedIssues.has(issue.id),
+      )
+
+      if (availableIssues.length === 0) {
+        setUsedIssues(new Set())
+        setError("All issues have been shown. Starting over!")
+        return
+      }
+
+      const selectedIssue =
+        availableIssues[Math.floor(Math.random() * availableIssues.length)]
+      setCurrentIssue(selectedIssue)
+      setUsedIssues(new Set([...usedIssues, selectedIssue.id]))
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to fetch issues');
+      setError(
+        error instanceof Error ? error.message : "Failed to fetch issues",
+      )
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   return (
     <div className="space-y-6">
@@ -76,7 +81,11 @@ export default function IssueRoulette() {
           className="text-lg"
         >
           <Dices className="mr-2 h-5 w-5" />
-          {isLoading ? 'Spinning...' : currentIssue ? 'Spin Again' : 'Spin the Wheel'}
+          {isLoading
+            ? "Spinning..."
+            : currentIssue
+              ? "Spin Again"
+              : "Spin the Wheel"}
         </Button>
 
         {error && (
@@ -92,7 +101,9 @@ export default function IssueRoulette() {
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="text-2xl font-semibold mb-2">{currentIssue.title}</h2>
+                <h2 className="text-2xl font-semibold mb-2">
+                  {currentIssue.title}
+                </h2>
                 <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                   <div className="flex items-center">
                     <User className="mr-1 h-4 w-4" />
@@ -100,7 +111,7 @@ export default function IssueRoulette() {
                   </div>
                   <div className="flex items-center">
                     <Calendar className="mr-1 h-4 w-4" />
-                    {format(new Date(currentIssue.created_at), 'MMM d, yyyy')}
+                    {format(new Date(currentIssue.created_at), "MMM d, yyyy")}
                   </div>
                 </div>
               </div>
@@ -114,11 +125,11 @@ export default function IssueRoulette() {
                 <ExternalLink className="ml-1 h-4 w-4" />
               </a>
             </div>
-            
+
             <div className="prose prose-sm dark:prose-invert max-w-none">
               <ReactMarkdown>{currentIssue.body}</ReactMarkdown>
             </div>
-            
+
             <div className="text-sm text-muted-foreground pt-4 border-t">
               Repository: {currentIssue.repository.full_name}
             </div>
@@ -126,5 +137,5 @@ export default function IssueRoulette() {
         </Card>
       )}
     </div>
-  );
+  )
 }

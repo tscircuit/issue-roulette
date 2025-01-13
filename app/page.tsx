@@ -1,4 +1,4 @@
-import IssueRoulette from '@/components/IssueRoulette';
+import IssueRoulette from "@/components/IssueRoulette"
 
 export default function Home() {
   return (
@@ -8,5 +8,5 @@ export default function Home() {
         <IssueRoulette />
       </div>
     </div>
-  );
+  )
 }
