@@ -2,53 +2,26 @@
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import type { Issue } from "@/lib/github"
 import { format } from "date-fns"
 import { AlertCircle, Calendar, Dices, ExternalLink, User } from "lucide-react"
 import { useState } from "react"
 import ReactMarkdown from "react-markdown"
 
-type Issue = {
-  id: number
-  title: string
-  body: string
-  html_url: string
-  created_at: string
-  user: {
-    login: string
-    avatar_url: string
-  }
-  repository: {
-    name: string
-    full_name: string
-  }
-}
-
-type ErrorResponse = {
-  error: string
-  message: string
-}
-
-export default function IssueRoulette() {
+export default function IssueRoulette({
+  initialIssues,
+}: { initialIssues: Issue[] }) {
   const [currentIssue, setCurrentIssue] = useState<Issue | null>(null)
   const [usedIssues, setUsedIssues] = useState<Set<number>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const spinRoulette = async () => {
+  const spinRoulette = () => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const response = await fetch("/api/issues")
-      const data = await response.json()
-
-      if (!response.ok) {
-        const errorData = data as ErrorResponse
-        throw new Error(errorData.message || "Failed to fetch issues")
-      }
-
-      const issues = data as Issue[]
-      const availableIssues = issues.filter(
+      const availableIssues = initialIssues.filter(
         (issue) => !usedIssues.has(issue.id),
       )
 
@@ -61,10 +34,12 @@ export default function IssueRoulette() {
       const selectedIssue =
         availableIssues[Math.floor(Math.random() * availableIssues.length)]
       setCurrentIssue(selectedIssue)
-      setUsedIssues(new Set([...usedIssues, selectedIssue.id]))
+      const newUsedIssues = new Set(usedIssues)
+      newUsedIssues.add(selectedIssue.id)
+      setUsedIssues(newUsedIssues)
     } catch (error) {
       setError(
-        error instanceof Error ? error.message : "Failed to fetch issues",
+        error instanceof Error ? error.message : "Failed to select issue",
       )
     } finally {
       setIsLoading(false)
