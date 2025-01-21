@@ -22,7 +22,9 @@ export default function IssueRoulette({
   const [usedIssues, setUsedIssues] = useState<Set<number>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [filterType, setFilterType] = useState<"all" | "bounty" | "unbountied">("all")
+  const [filterType, setFilterType] = useState<"all" | "bounty" | "unbountied">(
+    "all",
+  )
 
   const spinRoulette = () => {
     setIsLoading(true)
@@ -73,7 +75,7 @@ export default function IssueRoulette({
             onValueChange={(value: "all" | "bounty") => {
               setFilterType(value)
               setUsedIssues(new Set()) // Reset used issues when switching modes
-              setCurrentIssue(null)    // Clear current issue when switching modes
+              setCurrentIssue(null) // Clear current issue when switching modes
             }}
           >
             <SelectTrigger className="w-[200px]">
@@ -85,7 +87,7 @@ export default function IssueRoulette({
               <SelectItem value="unbountied">Unbountied Issues</SelectItem>
             </SelectContent>
           </Select>
-          
+
           <Button
             size="lg"
             onClick={spinRoulette}

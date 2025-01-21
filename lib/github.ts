@@ -14,12 +14,12 @@ export interface Issue {
     name: string
     full_name: string
   }
-  bountyAmount?: number  // Amount of bounty in dollars, if this is a bountied issue
+  bountyAmount?: number // Amount of bounty in dollars, if this is a bountied issue
 }
 
 export async function fetchGithubIssues(
   token: string,
-  filterType: "all" | "bounty" | "unbountied" = "all"
+  filterType: "all" | "bounty" | "unbountied" = "all",
 ): Promise<Issue[]> {
   const octokit = new Octokit({ auth: token })
   const org = "tscircuit"
@@ -61,7 +61,7 @@ export async function fetchGithubIssues(
     .map((issue) => {
       // Check for bounty label and parse amount
       const hasBountyLabel = issue.labels?.some(
-        (label: any) => label.name === "💎 Bounty"
+        (label: any) => label.name === "💎 Bounty",
       )
       let bountyAmount = 0
       if (hasBountyLabel) {
