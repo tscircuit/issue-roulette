@@ -24,7 +24,7 @@ export default async function Home() {
           >
             <Button variant="outline">
               <GitHubLogoIcon className="mr-2" />
-              View GitHub Profile
+              View GitHub
             </Button>
           </a>
         </div>
