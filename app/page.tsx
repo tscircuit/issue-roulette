@@ -1,11 +1,9 @@
 import IssueRoulette from "@/components/IssueRoulette"
 import { IssueSkeletonLoader } from "@/components/IssueSkeletonLoader"
-import { fetchGithubIssues } from "@/lib/github"
-import { Suspense } from "react"
-import { GitHubLogoIcon } from "@radix-ui/react-icons"
 import { Button } from "@/components/ui/button"
-
-
+import { fetchGithubIssues } from "@/lib/github"
+import { GitHubLogoIcon } from "@radix-ui/react-icons"
+import { Suspense } from "react"
 
 export const revalidate = 3600 // Revalidate every hour
 
