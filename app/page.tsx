@@ -2,6 +2,10 @@ import IssueRoulette from "@/components/IssueRoulette"
 import { IssueSkeletonLoader } from "@/components/IssueSkeletonLoader"
 import { fetchGithubIssues } from "@/lib/github"
 import { Suspense } from "react"
+import { GitHubLogoIcon } from "@radix-ui/react-icons"
+import { Button } from "@/components/ui/button"
+
+
 
 export const revalidate = 3600 // Revalidate every hour
 
@@ -13,16 +17,10 @@ export default async function Home() {
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-bold mb-8 text-center">Issue Roulette</h1>
         <div className="flex justify-center mb-8 items-center">
-          <a
-            href="https://github.com/tscircuit/tscircuit"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <img
-              alt="GitHub stars"
-              src="https://img.shields.io/github/stars/tscircuit/tscircuit?style=social"
-            />
-          </a>
+          <Button variant="outline">
+            <GitHubLogoIcon className="mr-2" />
+            View GitHub Profile
+          </Button>
         </div>
         <Suspense fallback={<IssueSkeletonLoader />}>
           <IssueRoulette initialIssues={issues} />
