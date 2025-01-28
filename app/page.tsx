@@ -17,10 +17,16 @@ export default async function Home() {
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-bold mb-8 text-center">Issue Roulette</h1>
         <div className="flex justify-center mb-8 items-center">
-          <Button variant="outline">
-            <GitHubLogoIcon className="mr-2" />
-            View GitHub Profile
-          </Button>
+          <a
+            href="https://github.com/tscircuit/issue-roulette"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Button variant="outline">
+              <GitHubLogoIcon className="mr-2" />
+              View GitHub Profile
+            </Button>
+          </a>
         </div>
         <Suspense fallback={<IssueSkeletonLoader />}>
           <IssueRoulette initialIssues={issues} />
