@@ -4,4 +4,3 @@ node_modules
 .next
 out
 .vercel
-package-lock.json
