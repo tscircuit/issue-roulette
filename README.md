@@ -1,4 +1,4 @@
 # Issue Roulette
 
-Find random recent issues for the tscircuit project that are ready to be
+Find random recent issues for tscircuit that are ready to be
 worked on.
