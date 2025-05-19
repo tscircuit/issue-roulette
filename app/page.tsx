@@ -14,6 +14,9 @@ export default async function Home() {
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-bold mb-8 text-center">Issue Roulette</h1>
+        <h2 className="text-xl text-muted-foreground mb-4 text-center">
+          Find open issues to work on
+        </h2>
         <div className="flex justify-center mb-8 items-center">
           <a
             href="https://github.com/tscircuit/issue-roulette"

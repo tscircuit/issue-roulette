@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
 import type { Issue } from "@/lib/github"
 import { format } from "date-fns"
 import { AlertCircle, Calendar, Dices, ExternalLink, User } from "lucide-react"
@@ -69,6 +70,14 @@ export default function IssueRoulette({
   return (
     <div className="space-y-6">
       <div className="flex flex-col items-center gap-4">
+        <div className="mb-2 text-center">
+          <Badge
+            variant="outline"
+            className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100"
+          >
+            Showing Open Issues Only
+          </Badge>
+        </div>
         <div className="flex flex-col items-center gap-4">
           <Select
             value={filterType}

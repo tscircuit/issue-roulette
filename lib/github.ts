@@ -56,7 +56,8 @@ export async function fetchGithubIssues(
     .filter(
       (issue) =>
         !issue.pull_request && // Not a PR
-        !issue.assignees?.length, // Not assigned
+        !issue.assignees?.length && // Not assigned
+        issue.state === "open", // Only open issues
     )
     .map((issue) => {
       // Check for bounty label and parse amount
