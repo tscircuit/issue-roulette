@@ -12,10 +12,12 @@ import {
 import type { Issue } from "@/lib/github"
 import { format } from "date-fns"
 import { AlertCircle, Calendar, Dices, ExternalLink, User } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import ReactMarkdown from "react-markdown"
 
-export default function IssueRoulette() {
+export default function IssueRoulette({
+  initialIssues,
+}: { initialIssues: Issue[] }) {
   const [currentIssue, setCurrentIssue] = useState<Issue | null>(null)
   const [usedIssues, setUsedIssues] = useState<Set<number>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
@@ -23,15 +25,6 @@ export default function IssueRoulette() {
   const [filterType, setFilterType] = useState<"all" | "bounty" | "unbountied">(
     "all",
   )
-  const [initialIssues, setInitialIssues] = useState<Issue[]>([])
-
-  useEffect(() => {
-    (async () => {
-        const res = await fetch(`/api/issues`)
-      const issues: Issue[] = await res.json()
-      setInitialIssues(issues)
-    })()
-  }, [])
 
   const spinRoulette = () => {
     setIsLoading(true)
