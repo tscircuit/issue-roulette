@@ -116,7 +116,6 @@ export async function fetchGithubIssues(
       })
       .sort((a, b) => b.random - a.random) // Sort by weighted random value
       .map(({ weight, random, ...issue }) => issue) // Remove helper properties
-      .slice(0, 20) // Limit to 20 issues
   }
 
   // Return filtered issues based on filter type
