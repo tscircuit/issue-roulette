@@ -92,7 +92,6 @@ export async function fetchGithubIssues(
     return processedIssues
       .filter((issue) => (issue.bountyAmount ?? 0) > 0)
       .sort((a, b) => (b.bountyAmount ?? 0) - (a.bountyAmount ?? 0))
-      .slice(0, 20) // Keep same limit as weighted issues
   }
 
   // Function to get weighted random issues (original logic)
@@ -125,7 +124,6 @@ export async function fetchGithubIssues(
     case "unbountied":
       return processedIssues
         .filter((issue) => (issue.bountyAmount ?? 0) === 0)
-        .slice(0, 20) // Keep same limit as other filters
     default:
       return getWeightedIssues()
   }
