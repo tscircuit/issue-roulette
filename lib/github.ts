@@ -25,19 +25,17 @@ export async function fetchGithubIssues(
   const org = "tscircuit"
 
   // Get all repositories from the tscircuit organization
-  const { data: repos } = await octokit.repos.listForOrg({
+  const repos = await octokit.paginate(octokit.repos.listForOrg, {
     org,
-    per_page: 100,
   })
 
   // Fetch issues from all repositories
   const allIssues = await Promise.all(
     repos.map(async (repo) => {
-      const { data: issues } = await octokit.issues.listForRepo({
+      const issues = await octokit.paginate(octokit.issues.listForRepo, {
         owner: org,
         repo: repo.name,
         state: "open",
-        per_page: 100,
       })
 
       return issues.map((issue) => ({
