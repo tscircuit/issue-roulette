@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { Issue } from "@/lib/github"
+import type { IssuesByFilter, Issue } from "@/lib/github"
 import { format } from "date-fns"
 import { AlertCircle, Calendar, Dices, ExternalLink, User } from "lucide-react"
 import { useState } from "react"
@@ -17,7 +17,7 @@ import ReactMarkdown from "react-markdown"
 
 export default function IssueRoulette({
   initialIssues,
-}: { initialIssues: Issue[] }) {
+}: { initialIssues: IssuesByFilter }) {
   const [currentIssue, setCurrentIssue] = useState<Issue | null>(null)
   const [usedIssues, setUsedIssues] = useState<Set<number>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
@@ -32,18 +32,8 @@ export default function IssueRoulette({
 
     try {
       // Filter available issues based on bounty preference and used status
-      const availableIssues = initialIssues
+      const availableIssues = initialIssues[filterType]
         .filter((issue) => !usedIssues.has(issue.id))
-        .filter((issue) => {
-          switch (filterType) {
-            case "bounty":
-              return (issue.bountyAmount ?? 0) > 0
-            case "unbountied":
-              return (issue.bountyAmount ?? 0) === 0
-            default:
-              return true
-          }
-        })
 
       if (availableIssues.length === 0) {
         setUsedIssues(new Set())

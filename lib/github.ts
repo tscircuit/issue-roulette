@@ -17,10 +17,13 @@ export interface Issue {
   bountyAmount?: number // Amount of bounty in dollars, if this is a bountied issue
 }
 
+export interface IssuesByFilter {
+  [filter: string]: Issue[]
+}
+
 export async function fetchGithubIssues(
   token: string,
-  filterType: "all" | "bounty" | "unbountied" = "all",
-): Promise<Issue[]> {
+): Promise<IssuesByFilter> {
   const octokit = new Octokit({ auth: token })
   const org = "tscircuit"
 
@@ -92,6 +95,7 @@ export async function fetchGithubIssues(
     return processedIssues
       .filter((issue) => (issue.bountyAmount ?? 0) > 0)
       .sort((a, b) => (b.bountyAmount ?? 0) - (a.bountyAmount ?? 0))
+      .slice(0, 20) // Keep same limit as weighted issues
   }
 
   // Function to get weighted random issues (original logic)
@@ -115,16 +119,14 @@ export async function fetchGithubIssues(
       })
       .sort((a, b) => b.random - a.random) // Sort by weighted random value
       .map(({ weight, random, ...issue }) => issue) // Remove helper properties
+      .slice(0, 20) // Limit to 20 issues
   }
 
-  // Return filtered issues based on filter type
-  switch (filterType) {
-    case "bounty":
-      return getBountiedIssues()
-    case "unbountied":
-      return processedIssues
-        .filter((issue) => (issue.bountyAmount ?? 0) === 0)
-    default:
-      return getWeightedIssues()
+  return {
+    "bounty": getBountiedIssues(),
+    "all": getWeightedIssues(),
+    "unbountied": processedIssues
+      .filter((issue) => (issue.bountyAmount ?? 0) === 0)
+      .slice(0, 20), // Keep same limit as other filters
   }
 }
