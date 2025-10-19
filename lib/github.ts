@@ -32,9 +32,11 @@ export async function fetchGithubIssues(
     org,
   })
 
+  const reposNotArchived = repos.filter(repo => !repo.archived)
+
   // Fetch issues from all repositories
   const allIssues = await Promise.all(
-    repos.map(async (repo) => {
+    reposNotArchived.map(async (repo) => {
       const issues = await octokit.paginate(octokit.issues.listForRepo, {
         owner: org,
         repo: repo.name,
