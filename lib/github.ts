@@ -17,10 +17,13 @@ export interface Issue {
   bountyAmount?: number // Amount of bounty in dollars, if this is a bountied issue
 }
 
+export interface IssuesByFilter {
+  [filter: string]: Issue[]
+}
+
 export async function fetchGithubIssues(
   token: string,
-  filterType: "all" | "bounty" | "unbountied" = "all",
-): Promise<Issue[]> {
+): Promise<IssuesByFilter> {
   const octokit = new Octokit({ auth: token })
   const org = "tscircuit"
 
@@ -119,15 +122,11 @@ export async function fetchGithubIssues(
       .slice(0, 20) // Limit to 20 issues
   }
 
-  // Return filtered issues based on filter type
-  switch (filterType) {
-    case "bounty":
-      return getBountiedIssues()
-    case "unbountied":
-      return processedIssues
-        .filter((issue) => (issue.bountyAmount ?? 0) === 0)
-        .slice(0, 20) // Keep same limit as other filters
-    default:
-      return getWeightedIssues()
+  return {
+    "bounty": getBountiedIssues(),
+    "all": getWeightedIssues(),
+    "unbountied": processedIssues
+      .filter((issue) => (issue.bountyAmount ?? 0) === 0)
+      .slice(0, 20), // Keep same limit as other filters
   }
 }
