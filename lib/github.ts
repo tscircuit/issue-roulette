@@ -34,28 +34,36 @@ export async function fetchGithubIssues(
 
   const reposNotArchived = repos.filter(repo => !repo.archived)
 
-  // Fetch issues from all repositories
-  const allIssues = await Promise.all(
+  // Fetch issues from all repositories; tolerate per-repo fetch failures
+  const allIssues = await Promise.allSettled(
     reposNotArchived.map(async (repo) => {
-      const issues = await octokit.paginate(octokit.issues.listForRepo, {
-        owner: org,
-        repo: repo.name,
-        state: "open",
-      })
+      try {
+        const issues = await octokit.paginate(octokit.issues.listForRepo, {
+          owner: org,
+          repo: repo.name,
+          state: "open",
+        })
 
-      return issues.map((issue) => ({
-        ...issue,
-        repository: {
-          name: repo.name,
-          full_name: `${org}/${repo.name}`,
-        },
-      }))
+        return issues.map((issue) => ({
+          ...issue,
+          repository: {
+            name: repo.name,
+            full_name: `${org}/${repo.name}`,
+          },
+        }))
+      } catch (error) {
+        console.error(
+          `Failed to fetch issues for ${org}/${repo.name}:`,
+          error,
+        )
+        return []
+      }
     }),
   )
 
   // Flatten and filter issues
   const processedIssues = allIssues
-    .flat()
+    .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
     .filter(
       (issue) =>
         !issue.pull_request && // Not a PR
