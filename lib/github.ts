@@ -32,7 +32,7 @@ export async function fetchGithubIssues(
     org,
   })
 
-  const reposNotArchived = repos.filter(repo => !repo.archived)
+  const reposNotArchived = repos.filter((repo) => !repo.archived)
 
   // Fetch issues from all repositories; tolerate per-repo fetch failures
   const allIssues = await Promise.allSettled(
@@ -52,10 +52,7 @@ export async function fetchGithubIssues(
           },
         }))
       } catch (error) {
-        console.error(
-          `Failed to fetch issues for ${org}/${repo.name}:`,
-          error,
-        )
+        console.error(`Failed to fetch issues for ${org}/${repo.name}:`, error)
         return []
       }
     }),
@@ -133,9 +130,9 @@ export async function fetchGithubIssues(
   }
 
   return {
-    "bounty": getBountiedIssues(),
-    "all": getWeightedIssues(),
-    "unbountied": processedIssues
+    bounty: getBountiedIssues(),
+    all: getWeightedIssues(),
+    unbountied: processedIssues
       .filter((issue) => (issue.bountyAmount ?? 0) === 0)
       .slice(0, 20), // Keep same limit as other filters
   }

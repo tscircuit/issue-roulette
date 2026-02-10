@@ -5,7 +5,7 @@ import { fetchGithubIssues } from "@/lib/github"
 import { GitHubLogoIcon } from "@radix-ui/react-icons"
 import { Suspense } from "react"
 
-export const revalidate = 3600 // Revalidate every hour
+export const revalidate = 60 // Revalidate every minute for fresher bounty data
 
 export default async function Home() {
   const issues = await fetchGithubIssues(process.env.GITHUB_TOKEN || "")
