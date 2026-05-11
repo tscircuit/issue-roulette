@@ -32,7 +32,7 @@ export async function fetchGithubIssues(
     org,
   })
 
-  const reposNotArchived = repos.filter(repo => !repo.archived)
+  const reposNotArchived = repos.filter((repo) => !repo.archived)
 
   // Fetch issues from all repositories; tolerate per-repo fetch failures
   const allIssues = await Promise.allSettled(
@@ -52,33 +52,66 @@ export async function fetchGithubIssues(
           },
         }))
       } catch (error) {
-        console.error(
-          `Failed to fetch issues for ${org}/${repo.name}:`,
-          error,
-        )
+        console.error(`Failed to fetch issues for ${org}/${repo.name}:`, error)
         return []
       }
     }),
   )
 
+  const getBountyAmountFromText = (text?: string | null) => {
+    const bountyMatch = text?.match(/(?:\/bounty|💎)\s*\$([0-9][\d,]*)/i)
+    return bountyMatch
+      ? Number.parseInt(bountyMatch[1].replace(/,/g, ""), 10)
+      : 0
+  }
+
+  const getBountyAmountFromLabels = (
+    labels?: Array<{ name?: string } | string>,
+  ) => {
+    const amountLabel = labels
+      ?.map((label) => (typeof label === "string" ? label : label.name))
+      .find((name) => /^\$\d[\d,]*$/.test(name ?? ""))
+
+    return amountLabel
+      ? Number.parseInt(amountLabel.slice(1).replace(/,/g, ""), 10)
+      : 0
+  }
+
+  const getBountyAmountFromComments = async (issue: any) => {
+    const { data: comments } = await octokit.issues.listComments({
+      owner: org,
+      repo: issue.repository.name,
+      issue_number: issue.number,
+      per_page: 100,
+    })
+
+    return (
+      comments
+        .map((comment) => getBountyAmountFromText(comment.body))
+        .find((amount) => amount > 0) ?? 0
+    )
+  }
+
   // Flatten and filter issues
-  const processedIssues = allIssues
+  const filteredIssues = allIssues
     .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
     .filter(
       (issue) =>
         !issue.pull_request && // Not a PR
         !issue.assignees?.length, // Not assigned
     )
-    .map((issue) => {
+
+  const processedIssues = await Promise.all(
+    filteredIssues.map(async (issue) => {
       // Check for bounty label and parse amount
       const hasBountyLabel = issue.labels?.some(
         (label: any) => label.name === "💎 Bounty",
       )
-      let bountyAmount = 0
-      if (hasBountyLabel) {
-        const bountyMatch = (issue.body || "").match(/\/bounty\s*\$(\d+)/i)
-        bountyAmount = bountyMatch ? parseInt(bountyMatch[1], 10) : 0
-      }
+      const bountyAmount = hasBountyLabel
+        ? getBountyAmountFromLabels(issue.labels) ||
+          getBountyAmountFromText(issue.body) ||
+          (await getBountyAmountFromComments(issue))
+        : 0
 
       return {
         id: issue.id,
@@ -93,7 +126,8 @@ export async function fetchGithubIssues(
         repository: issue.repository,
         bountyAmount,
       }
-    })
+    }),
+  )
 
   // Calculate dates for weighting
   const now = new Date()
@@ -133,9 +167,9 @@ export async function fetchGithubIssues(
   }
 
   return {
-    "bounty": getBountiedIssues(),
-    "all": getWeightedIssues(),
-    "unbountied": processedIssues
+    bounty: getBountiedIssues(),
+    all: getWeightedIssues(),
+    unbountied: processedIssues
       .filter((issue) => (issue.bountyAmount ?? 0) === 0)
       .slice(0, 20), // Keep same limit as other filters
   }
