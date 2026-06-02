@@ -3,22 +3,22 @@ import { Octokit } from "@octokit/rest"
 type GithubLabel =
   | string
   | {
-      name?: string
+      name?: string | null
     }
-
-const getLabelName = (label: GithubLabel) =>
-  typeof label === "string" ? label : label.name
 
 interface GithubIssueComment {
   body?: string | null
 }
 
-const extractBountyAmount = (text?: string | null) => {
-  const bountyMatch = text?.match(/\/bounty\s*\$(\d+(?:\.\d+)?)/i)
-  if (bountyMatch) return Number.parseFloat(bountyMatch[1])
+const getLabelName = (label: GithubLabel) =>
+  typeof label === "string" ? label : label.name || ""
 
-  const dollarMatch = text?.match(/(?:^|\s)\$(\d+(?:\.\d+)?)(?:\s|$)/)
-  return dollarMatch ? Number.parseFloat(dollarMatch[1]) : 0
+const extractBountyAmount = (text?: string | null) => {
+  const bountyMatch = text?.match(
+    /\$\s*([\d,]+(?:\.\d+)?)\s*bounty|\/bounty\s*\$\s*([\d,]+(?:\.\d+)?)|bounty[^\n$]{0,80}\$\s*([\d,]+(?:\.\d+)?)/i,
+  )
+  const amountText = bountyMatch?.slice(1).find(Boolean)
+  return amountText ? Number(amountText.replace(/,/g, "")) : 0
 }
 
 const getBountyAmountFromLabels = (labels?: GithubLabel[]) => {
@@ -142,7 +142,7 @@ export async function fetchGithubIssues(
       }
 
       const bountyAmount = Math.max(
-        extractBountyAmount(issue.body),
+        extractBountyAmount(`${issue.title}\n${issue.body || ""}`),
         getBountyAmountFromLabels(issue.labels as GithubLabel[]),
         commentsBountyAmount,
       )
