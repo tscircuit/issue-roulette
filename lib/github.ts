@@ -21,6 +21,31 @@ export interface IssuesByFilter {
   [filter: string]: Issue[]
 }
 
+function parseBountyAmount(text: string | null | undefined): number {
+  if (!text) return 0
+
+  const patterns = [
+    /\/bounty\s*\$(\d+(?:,\d{3})*)/i,
+    /\$\s*(\d+(?:,\d{3})*)\s+bounty/i,
+  ]
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern)
+    if (match) return Number.parseInt(match[1].replace(/,/g, ""), 10)
+  }
+
+  return 0
+}
+
+function hasBountyLabel(labels: any[] | undefined): boolean {
+  return (
+    labels?.some((label) => {
+      const name = typeof label === "string" ? label : label.name
+      return typeof name === "string" && name.toLowerCase().includes("bounty")
+    }) ?? false
+  )
+}
+
 export async function fetchGithubIssues(
   token: string,
 ): Promise<IssuesByFilter> {
@@ -70,15 +95,10 @@ export async function fetchGithubIssues(
         !issue.assignees?.length, // Not assigned
     )
     .map((issue) => {
-      // Check for bounty label and parse amount
-      const hasBountyLabel = issue.labels?.some(
-        (label: any) => label.name === "💎 Bounty",
-      )
-      let bountyAmount = 0
-      if (hasBountyLabel) {
-        const bountyMatch = (issue.body || "").match(/\/bounty\s*\$(\d+)/i)
-        bountyAmount = bountyMatch ? parseInt(bountyMatch[1], 10) : 0
-      }
+      const issueHasBountyLabel = hasBountyLabel(issue.labels)
+      const bountyAmount = issueHasBountyLabel
+        ? parseBountyAmount(issue.body)
+        : 0
 
       return {
         id: issue.id,
@@ -92,8 +112,32 @@ export async function fetchGithubIssues(
         },
         repository: issue.repository,
         bountyAmount,
+        hasBountyLabel: issueHasBountyLabel,
       }
     })
+
+  await Promise.all(
+    processedIssues
+      .filter((issue) => issue.hasBountyLabel && issue.bountyAmount === 0)
+      .map(async (issue) => {
+        try {
+          const [owner, repo] = issue.repository.full_name.split("/")
+          const issueNumber = Number(issue.html_url.split("/").pop())
+          const comments = await octokit.paginate(octokit.issues.listComments, {
+            owner,
+            repo,
+            issue_number: issueNumber,
+            per_page: 100,
+          })
+          issue.bountyAmount = Math.max(
+            ...comments.map((comment) => parseBountyAmount(comment.body)),
+            0,
+          )
+        } catch (error) {
+          console.error(`Failed to fetch comments for ${issue.html_url}:`, error)
+        }
+      }),
+  )
 
   // Calculate dates for weighting
   const now = new Date()
