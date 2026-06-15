@@ -74,7 +74,10 @@ export async function fetchGithubIssues(
     openIssues.map(async (issue) => {
       // Check for bounty label and parse amount
       const hasBountyLabel = issue.labels?.some(
-        (label: any) => label.name === "💎 Bounty" || label.name.toLowerCase().includes("bounty"),
+        (label: any) => {
+          const name = typeof label === 'string' ? label : label.name;
+          return name === "💎 Bounty" || (name && name.toLowerCase().includes("bounty"));
+        }
       )
       
       let bountyAmount = 0
@@ -82,10 +85,13 @@ export async function fetchGithubIssues(
       // 1. Try to extract from labels like "$50"
       if (issue.labels) {
         for (const label of issue.labels) {
-          const match = label.name.match(/\$(\d+)/)
-          if (match) {
-            bountyAmount = parseInt(match[1], 10)
-            break
+          const labelName = typeof label === 'string' ? label : label.name;
+          if (labelName) {
+            const match = labelName.match(/\$(\d+)/)
+            if (match) {
+              bountyAmount = parseInt(match[1], 10)
+              break
+            }
           }
         }
       }
