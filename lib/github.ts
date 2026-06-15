@@ -62,22 +62,69 @@ export async function fetchGithubIssues(
   )
 
   // Flatten and filter issues
-  const processedIssues = allIssues
+  const openIssues = allIssues
     .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
     .filter(
       (issue) =>
         !issue.pull_request && // Not a PR
         !issue.assignees?.length, // Not assigned
     )
-    .map((issue) => {
+
+  const processedIssues = await Promise.all(
+    openIssues.map(async (issue) => {
       // Check for bounty label and parse amount
       const hasBountyLabel = issue.labels?.some(
-        (label: any) => label.name === "💎 Bounty",
+        (label: any) => {
+          const name = typeof label === 'string' ? label : label.name;
+          return name === "💎 Bounty" || (name && name.toLowerCase().includes("bounty"));
+        }
       )
+      
       let bountyAmount = 0
-      if (hasBountyLabel) {
+      
+      // 1. Try to extract from labels like "$50"
+      if (issue.labels) {
+        for (const label of issue.labels) {
+          const labelName = typeof label === 'string' ? label : label.name;
+          if (labelName) {
+            const match = labelName.match(/\$(\d+)/)
+            if (match) {
+              bountyAmount = parseInt(match[1], 10)
+              break
+            }
+          }
+        }
+      }
+
+      // 2. Try to extract from issue body
+      if (bountyAmount === 0 && hasBountyLabel) {
         const bountyMatch = (issue.body || "").match(/\/bounty\s*\$(\d+)/i)
-        bountyAmount = bountyMatch ? parseInt(bountyMatch[1], 10) : 0
+        if (bountyMatch) {
+          bountyAmount = parseInt(bountyMatch[1], 10)
+        }
+      }
+
+      // 3. Try to extract from Algora bot comments
+      if (bountyAmount === 0 && hasBountyLabel && issue.number) {
+        try {
+          const comments = await octokit.paginate(octokit.issues.listComments, {
+            owner: org,
+            repo: issue.repository.name,
+            issue_number: issue.number,
+          })
+          
+          for (const comment of comments) {
+            if (comment.user?.login === "algora-bot" || comment.body?.includes("bounty")) {
+              const match = (comment.body || "").match(/\$(\d+)/)
+              if (match) {
+                bountyAmount = parseInt(match[1], 10)
+                break
+              }
+            }
+          }
+        } catch (e) {
+          console.error(`Failed to fetch comments for ${issue.repository.full_name}#${issue.number}`, e)
+        }
       }
 
       return {
@@ -94,6 +141,7 @@ export async function fetchGithubIssues(
         bountyAmount,
       }
     })
+  )
 
   // Calculate dates for weighting
   const now = new Date()
