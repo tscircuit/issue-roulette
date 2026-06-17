@@ -17,8 +17,61 @@ export interface Issue {
   bountyAmount?: number // Amount of bounty in dollars, if this is a bountied issue
 }
 
+type IssueLabel = {
+  name?: string | null
+}
+
+type IssueComment = {
+  body?: string | null
+}
+
 export interface IssuesByFilter {
   [filter: string]: Issue[]
+}
+
+const BOUNTY_REGEX = /(?:\/bounty\s*)?\$([0-9]+(?:\.[0-9]+)?)/i
+
+const getBountyAmountFromText = (text?: string | null) => {
+  if (!text) return 0
+
+  const match = text.match(BOUNTY_REGEX)
+  return match ? Number.parseInt(match[1] ?? "0", 10) : 0
+}
+
+export const extractBountyAmount = async (
+  octokit: Octokit,
+  org: string,
+  issue: {
+    number: number
+    body?: string | null
+    labels?: Array<IssueLabel | string> | null
+  },
+  repoName: string,
+) => {
+  const bodyAmount = getBountyAmountFromText(issue.body)
+  if (bodyAmount > 0) return bodyAmount
+
+  const labelAmount =
+    issue.labels?.reduce((highest, label) => {
+      const labelText = typeof label === "string" ? label : label.name
+      const amount = getBountyAmountFromText(labelText)
+      return amount > highest ? amount : highest
+    }, 0) ?? 0
+  if (labelAmount > 0) return labelAmount
+
+  const comments = await octokit.paginate(octokit.issues.listComments, {
+    owner: org,
+    repo: repoName,
+    issue_number: issue.number,
+    per_page: 100,
+  })
+
+  return (
+    comments.reduce((highest: number, comment: IssueComment) => {
+      const amount = getBountyAmountFromText(comment.body)
+      return amount > highest ? amount : highest
+    }, 0) || 0
+  )
 }
 
 export async function fetchGithubIssues(
@@ -32,7 +85,7 @@ export async function fetchGithubIssues(
     org,
   })
 
-  const reposNotArchived = repos.filter(repo => !repo.archived)
+  const reposNotArchived = repos.filter((repo) => !repo.archived)
 
   // Fetch issues from all repositories; tolerate per-repo fetch failures
   const allIssues = await Promise.allSettled(
@@ -52,33 +105,27 @@ export async function fetchGithubIssues(
           },
         }))
       } catch (error) {
-        console.error(
-          `Failed to fetch issues for ${org}/${repo.name}:`,
-          error,
-        )
+        console.error(`Failed to fetch issues for ${org}/${repo.name}:`, error)
         return []
       }
     }),
   )
 
   // Flatten and filter issues
-  const processedIssues = allIssues
+  const issuesWithRepos = allIssues
     .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
     .filter(
       (issue) =>
         !issue.pull_request && // Not a PR
         !issue.assignees?.length, // Not assigned
     )
-    .map((issue) => {
-      // Check for bounty label and parse amount
-      const hasBountyLabel = issue.labels?.some(
-        (label: any) => label.name === "💎 Bounty",
+    .map(async (issue) => {
+      const bountyAmount = await extractBountyAmount(
+        octokit,
+        org,
+        issue,
+        issue.repository.name,
       )
-      let bountyAmount = 0
-      if (hasBountyLabel) {
-        const bountyMatch = (issue.body || "").match(/\/bounty\s*\$(\d+)/i)
-        bountyAmount = bountyMatch ? parseInt(bountyMatch[1], 10) : 0
-      }
 
       return {
         id: issue.id,
@@ -94,6 +141,8 @@ export async function fetchGithubIssues(
         bountyAmount,
       }
     })
+
+  const processedIssues = await Promise.all(issuesWithRepos)
 
   // Calculate dates for weighting
   const now = new Date()
@@ -133,9 +182,9 @@ export async function fetchGithubIssues(
   }
 
   return {
-    "bounty": getBountiedIssues(),
-    "all": getWeightedIssues(),
-    "unbountied": processedIssues
+    bounty: getBountiedIssues(),
+    all: getWeightedIssues(),
+    unbountied: processedIssues
       .filter((issue) => (issue.bountyAmount ?? 0) === 0)
       .slice(0, 20), // Keep same limit as other filters
   }
