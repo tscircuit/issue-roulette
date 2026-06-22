@@ -6,6 +6,7 @@ export interface Issue {
   body: string
   html_url: string
   created_at: string
+  state: "open" | "closed"
   user: {
     login: string
     avatar_url: string
@@ -32,7 +33,7 @@ export async function fetchGithubIssues(
     org,
   })
 
-  const reposNotArchived = repos.filter(repo => !repo.archived)
+  const reposNotArchived = repos.filter((repo) => !repo.archived)
 
   // Fetch issues from all repositories; tolerate per-repo fetch failures
   const allIssues = await Promise.allSettled(
@@ -52,10 +53,7 @@ export async function fetchGithubIssues(
           },
         }))
       } catch (error) {
-        console.error(
-          `Failed to fetch issues for ${org}/${repo.name}:`,
-          error,
-        )
+        console.error(`Failed to fetch issues for ${org}/${repo.name}:`, error)
         return []
       }
     }),
@@ -67,6 +65,7 @@ export async function fetchGithubIssues(
     .filter(
       (issue) =>
         !issue.pull_request && // Not a PR
+        issue.state === "open" && // Still open if cached/revalidated late
         !issue.assignees?.length, // Not assigned
     )
     .map((issue) => {
@@ -86,6 +85,7 @@ export async function fetchGithubIssues(
         body: issue.body || "",
         html_url: issue.html_url,
         created_at: issue.created_at,
+        state: issue.state as "open" | "closed",
         user: {
           login: issue.user?.login || "unknown",
           avatar_url: issue.user?.avatar_url || "",
@@ -133,9 +133,9 @@ export async function fetchGithubIssues(
   }
 
   return {
-    "bounty": getBountiedIssues(),
-    "all": getWeightedIssues(),
-    "unbountied": processedIssues
+    bounty: getBountiedIssues(),
+    all: getWeightedIssues(),
+    unbountied: processedIssues
       .filter((issue) => (issue.bountyAmount ?? 0) === 0)
       .slice(0, 20), // Keep same limit as other filters
   }
