@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { IssuesByFilter, Issue } from "@/lib/github"
+import type { Issue, IssuesByFilter } from "@/lib/github"
 import { format } from "date-fns"
 import { AlertCircle, Calendar, Dices, ExternalLink, User } from "lucide-react"
 import { useState } from "react"
@@ -32,8 +32,9 @@ export default function IssueRoulette({
 
     try {
       // Filter available issues based on bounty preference and used status
-      const availableIssues = initialIssues[filterType]
-        .filter((issue) => !usedIssues.has(issue.id))
+      const availableIssues = initialIssues[filterType].filter(
+        (issue) => !usedIssues.has(issue.id),
+      )
 
       if (availableIssues.length === 0) {
         setUsedIssues(new Set())
