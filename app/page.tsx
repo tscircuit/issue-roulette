@@ -5,10 +5,16 @@ import { fetchGithubIssues } from "@/lib/github"
 import { GitHubLogoIcon } from "@radix-ui/react-icons"
 import { Suspense } from "react"
 
-export const revalidate = 3600 // Revalidate every hour
+export const revalidate = 300 // Revalidate every 5 minutes
 
 export default async function Home() {
-  const issues = await fetchGithubIssues(process.env.GITHUB_TOKEN || "")
+  const emptyIssues = { bounty: [], all: [], unbountied: [] }
+  const issues = process.env.GITHUB_TOKEN
+    ? await fetchGithubIssues(process.env.GITHUB_TOKEN).catch((error) => {
+        console.error("Failed to load GitHub issues:", error)
+        return emptyIssues
+      })
+    : emptyIssues
 
   return (
     <div className="min-h-screen bg-background p-8">
