@@ -21,6 +21,67 @@ export interface IssuesByFilter {
   [filter: string]: Issue[]
 }
 
+const BOUNTY_AMOUNT_RE = /(?:\/bounty|💎)\s*\$([0-9][\d,]*)/i
+const DOLLAR_LABEL_RE = /^\$([0-9][\d,]*)$/
+
+function parseDollarAmount(value: string | undefined | null): number {
+  if (!value) return 0
+  const match = value.match(BOUNTY_AMOUNT_RE)
+  if (!match?.[1]) return 0
+  return Number.parseInt(match[1].replace(/,/g, ""), 10) || 0
+}
+
+function amountFromLabels(labels: any[] | undefined): number {
+  if (!labels?.length) return 0
+  for (const label of labels) {
+    const name = typeof label === "string" ? label : label?.name
+    if (!name) continue
+    const dollarMatch = String(name).match(DOLLAR_LABEL_RE)
+    if (dollarMatch?.[1]) {
+      return Number.parseInt(dollarMatch[1].replace(/,/g, ""), 10) || 0
+    }
+  }
+  return 0
+}
+
+function hasBountySignal(labels: any[] | undefined): boolean {
+  if (!labels?.length) return false
+  return labels.some((label) => {
+    const name = typeof label === "string" ? label : label?.name
+    if (!name) return false
+    return name === "💎 Bounty" || DOLLAR_LABEL_RE.test(String(name))
+  })
+}
+
+async function amountFromAlgoraComments(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  issueNumber: number,
+): Promise<number> {
+  try {
+    const comments = await octokit.paginate(octokit.issues.listComments, {
+      owner,
+      repo,
+      issue_number: issueNumber,
+      per_page: 100,
+    })
+
+    for (const comment of comments) {
+      const login = comment.user?.login?.toLowerCase() ?? ""
+      if (!login.includes("algora")) continue
+      const amount = parseDollarAmount(comment.body)
+      if (amount > 0) return amount
+    }
+  } catch (error) {
+    console.error(
+      `Failed to fetch comments for ${owner}/${repo}#${issueNumber}:`,
+      error,
+    )
+  }
+  return 0
+}
+
 export async function fetchGithubIssues(
   token: string,
 ): Promise<IssuesByFilter> {
@@ -32,7 +93,7 @@ export async function fetchGithubIssues(
     org,
   })
 
-  const reposNotArchived = repos.filter(repo => !repo.archived)
+  const reposNotArchived = repos.filter((repo) => !repo.archived)
 
   // Fetch issues from all repositories; tolerate per-repo fetch failures
   const allIssues = await Promise.allSettled(
@@ -62,22 +123,35 @@ export async function fetchGithubIssues(
   )
 
   // Flatten and filter issues
-  const processedIssues = allIssues
+  const candidateIssues = allIssues
     .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
     .filter(
       (issue) =>
         !issue.pull_request && // Not a PR
         !issue.assignees?.length, // Not assigned
     )
-    .map((issue) => {
-      // Check for bounty label and parse amount
-      const hasBountyLabel = issue.labels?.some(
-        (label: any) => label.name === "💎 Bounty",
-      )
+
+  const processedIssues = await Promise.all(
+    candidateIssues.map(async (issue) => {
+      const labels = issue.labels as any[] | undefined
       let bountyAmount = 0
-      if (hasBountyLabel) {
-        const bountyMatch = (issue.body || "").match(/\/bounty\s*\$(\d+)/i)
-        bountyAmount = bountyMatch ? parseInt(bountyMatch[1], 10) : 0
+
+      if (hasBountySignal(labels)) {
+        bountyAmount =
+          amountFromLabels(labels) || parseDollarAmount(issue.body || "")
+
+        // Algora often posts `/bounty $N` in a bot comment instead of the body
+        if (bountyAmount === 0) {
+          const [owner, repo] = issue.repository.full_name.split("/")
+          if (owner && repo) {
+            bountyAmount = await amountFromAlgoraComments(
+              octokit,
+              owner,
+              repo,
+              issue.number,
+            )
+          }
+        }
       }
 
       return {
@@ -93,7 +167,8 @@ export async function fetchGithubIssues(
         repository: issue.repository,
         bountyAmount,
       }
-    })
+    }),
+  )
 
   // Calculate dates for weighting
   const now = new Date()
@@ -133,9 +208,9 @@ export async function fetchGithubIssues(
   }
 
   return {
-    "bounty": getBountiedIssues(),
-    "all": getWeightedIssues(),
-    "unbountied": processedIssues
+    bounty: getBountiedIssues(),
+    all: getWeightedIssues(),
+    unbountied: processedIssues
       .filter((issue) => (issue.bountyAmount ?? 0) === 0)
       .slice(0, 20), // Keep same limit as other filters
   }
