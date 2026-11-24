@@ -21,6 +21,11 @@ export interface IssuesByFilter {
   [filter: string]: Issue[]
 }
 
+export function parseBountyAmount(body: string): number {
+  const bountyMatch = body.match(/\/bounty\s*\$(\d+(?:\.\d+)?)/i)
+  return bountyMatch ? parseFloat(bountyMatch[1]) : 0
+}
+
 export async function fetchGithubIssues(
   token: string,
 ): Promise<IssuesByFilter> {
@@ -76,8 +81,7 @@ export async function fetchGithubIssues(
       )
       let bountyAmount = 0
       if (hasBountyLabel) {
-        const bountyMatch = (issue.body || "").match(/\/bounty\s*\$(\d+)/i)
-        bountyAmount = bountyMatch ? parseInt(bountyMatch[1], 10) : 0
+        bountyAmount = parseBountyAmount(issue.body || "")
       }
 
       return {
